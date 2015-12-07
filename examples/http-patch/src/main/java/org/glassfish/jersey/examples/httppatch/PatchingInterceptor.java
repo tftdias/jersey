@@ -108,11 +108,31 @@ public class PatchingInterceptor implements ReaderInterceptor {
         if (found == null) {
             throw new InternalServerErrorException("No matching GET method on resource");
         }
+        
+        MultivaluedMap<String, String> pathParameters = uriInfo.getPathParameters();
+
+        Annotation[][] parameterAnnotations = found.getParameterAnnotations();
+
+        Object[] args = null;
+
+        // get existing path parameters
+        if(parameterAnnotations.length > 0) {
+            args = new Object[parameterAnnotations.length];
+
+            for (int i = 0; i < parameterAnnotations.length; i++) {
+                for (Annotation annotation : parameterAnnotations[i]) {
+                    if (annotation instanceof PathParam) {
+                        String name = ((PathParam) annotation).value();
+                        args[i] = pathParameters.get(name).get(0);
+                    }
+                }
+            }
+        }
 
         // Invoke the get method to get the state we are trying to patch
         Object bean;
         try {
-            bean = found.invoke(resource);
+            bean = found.invoke(resource, args);
         } catch (Exception e) {
             throw new WebApplicationException(e);
         }
